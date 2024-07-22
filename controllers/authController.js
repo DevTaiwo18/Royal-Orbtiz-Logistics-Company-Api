@@ -12,36 +12,36 @@ exports.login = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    if (user.password === password) {
+      console.log('Login successful');
+      res.status(200).json({ message: 'Login successful', user: { username: user.username, role: user.role } });
+    } else {
       console.log('Invalid credentials');
-      return res.status(401).json({ message: 'Invalid credentials' });
+      res.status(401).json({ message: 'Invalid credentials' });
     }
-
-    console.log('Login successful');
-    res.status(200).json({ message: 'Login successful' });
   } catch (error) {
     console.error('Error in login:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-
 exports.changePassword = async (req, res) => {
   const { username, currentPassword, newPassword } = req.body;
 
   try {
+    // Find the user by username
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
+    // Directly compare plain text passwords
+    if (user.password !== currentPassword) {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
-    user.password = newPassword;  // Directly assign newPassword
+    // Directly assign newPassword
+    user.password = newPassword;
     await user.save();
 
     res.status(200).json({ message: 'Password updated successfully' });
@@ -50,4 +50,5 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
