@@ -10,6 +10,8 @@ const errorHandler = require('./utils/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());
+
 app.use(express.json());
 
 mongoose.connect(process.env.DB_CONNECTION_STRING)
