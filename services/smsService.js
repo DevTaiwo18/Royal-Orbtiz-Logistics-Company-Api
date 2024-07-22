@@ -1,4 +1,5 @@
-const messagebird = require('messagebird')(process.env.MESSAGEBIRD_API_KEY);
+const messagebird = require('messagebird');
+const client = messagebird(process.env.MESSAGEBIRD_API_KEY);
 
 exports.sendSMS = (to, body) => {
     const params = {
@@ -7,7 +8,7 @@ exports.sendSMS = (to, body) => {
         body: body,
     };
 
-    messagebird.messages.create(params, (err, response) => {
+    client.messages.create(params, (err, response) => {
         if (err) {
             console.error('Error sending SMS:', err);
             throw err;
