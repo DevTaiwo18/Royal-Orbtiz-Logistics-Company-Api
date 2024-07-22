@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs'); 
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
@@ -16,7 +17,7 @@ exports.login = async (req, res) => {
 
     res.status(200).json({ message: 'Login successful' });
   } catch (error) {
-    console.error(error);
+    console.error('Error in login:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -35,12 +36,13 @@ exports.changePassword = async (req, res) => {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
-    user.password = newPassword;
+    // Hash the new password before saving
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
     res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Error in changePassword:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
