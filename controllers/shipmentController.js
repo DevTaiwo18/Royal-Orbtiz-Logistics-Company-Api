@@ -1,12 +1,11 @@
 const Shipment = require('../models/Shipment');
-const { errorHandler } = require('../utils/errorHandler');
 const { sendSMS } = require('../services/smsService');
 const Receipt = require('../models/Receipt');
 const generateReceiptPDF = require('../utils/generateReceiptPDF');
 const waybillGenerator = require('../utils/waybillGenerator');
 
 // CREATE new shipment
-exports.createShipment = async (req, res) => {
+exports.createShipment = async (req, res, next) => {
     const {
         sender,
         receiverName,
@@ -22,6 +21,9 @@ exports.createShipment = async (req, res) => {
     } = req.body;
 
     try {
+        // Generate waybill number
+        const waybillNumber = await waybillGenerator(originState, destinationState);
+
         // Create new shipment
         const newShipment = new Shipment({
             sender,
@@ -32,8 +34,8 @@ exports.createShipment = async (req, res) => {
             deliveryType,
             originState,
             destinationState,
-            waybillNumber: waybillGenerator(originState, destinationState),
-            status: 'Pending',  // Initial status
+            waybillNumber,
+            status: 'Pending',
             price,
             paymentMethod,
             amountPaid
@@ -41,11 +43,13 @@ exports.createShipment = async (req, res) => {
 
         const savedShipment = await newShipment.save();
 
+        // Generate receipt PDF
         const pdfBytes = await generateReceiptPDF(savedShipment, amountPaid, paymentMethod);
 
+        // Create new receipt
         const newReceipt = new Receipt({
-            shipment: shipmentId,
-            sender: senderId,
+            shipment: savedShipment._id,
+            sender: sender._id,
             receiverName,
             amountPaid,
             paymentMethod,
@@ -58,13 +62,14 @@ exports.createShipment = async (req, res) => {
         const message = `Hello ${sender.name}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
         await sendSMS(sender.phoneNumber, message);
 
-        res.status(201).json(savedShipment, pdfBytes);
+        res.status(201).json({ shipment: savedShipment, receipt: savedReceipt });
     } catch (error) {
-        console.error(error);
-        res.status(500).json(errorHandler(error));
+        console.error('Error creating shipment:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
+// UPDATE shipment
 exports.updateShipment = async (req, res) => {
     const shipmentId = req.params.id;
     const { status } = req.body;
@@ -84,20 +89,18 @@ exports.updateShipment = async (req, res) => {
         if (status === 'In Transit') {
             const message = `Hello ${updatedShipment.sender.name}, your shipment with waybill ${updatedShipment.waybillNumber} is now in transit. Thank you for choosing Royal Orbitz Logistics.`;
             await sendSMS(updatedShipment.sender.phoneNumber, message);
-
         } else if (status === 'Delivered') {
             const senderMessage = `Hello ${updatedShipment.sender.name}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
             await sendSMS(updatedShipment.sender.phoneNumber, senderMessage);
 
             const receiverMessage = `Hello ${updatedShipment.receiverName}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
             await sendSMS(updatedShipment.receiverPhone, receiverMessage);
-
         }
 
         res.status(200).json(updatedShipment);
     } catch (error) {
         console.error('Error updating shipment:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
@@ -107,8 +110,8 @@ exports.getAllShipments = async (req, res) => {
         const shipments = await Shipment.find();
         res.status(200).json(shipments);
     } catch (error) {
-        console.error(error);
-        res.status(500).json(errorHandler(error));
+        console.error('Error fetching shipments:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
@@ -123,11 +126,10 @@ exports.getShipmentById = async (req, res) => {
         }
         res.status(200).json(shipment);
     } catch (error) {
-        console.error(error);
-        res.status(500).json(errorHandler(error));
+        console.error('Error fetching shipment:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
 
 // DELETE shipment
 exports.deleteShipment = async (req, res) => {
@@ -140,7 +142,7 @@ exports.deleteShipment = async (req, res) => {
         }
         res.status(200).json({ message: 'Shipment deleted successfully' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json(errorHandler(error));
+        console.error('Error deleting shipment:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
