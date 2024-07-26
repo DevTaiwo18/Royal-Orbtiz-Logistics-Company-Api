@@ -1,15 +1,21 @@
 const mongoose = require('mongoose');
 
-const ReceiptSchema = new mongoose.Schema({
-    shipment: { type: mongoose.Schema.Types.ObjectId, ref: 'Shipment', required: true },
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
-    receiverName: { type: String, required: true },
-    amountPaid: { type: Number, required: true },
-    paymentMethod: { type: String, enum: ['Cash', 'Transfer'], required: true },
-    pdf: { data: Buffer, contentType: String },  
-    createdAt: { type: Date, default: Date.now }
+const receiptSchema = new mongoose.Schema({
+    pdf: {
+        data: Buffer, 
+        contentType: String
+    },
+    senderName: {
+        type: String,
+        required: true
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['cash', 'transfer'], 
+        required: true
+    },
+    // Add other fields as necessary
 });
 
-const Receipt = mongoose.model('Receipt', ReceiptSchema);
-
+const Receipt = mongoose.model('Receipt', receiptSchema);
 module.exports = Receipt;

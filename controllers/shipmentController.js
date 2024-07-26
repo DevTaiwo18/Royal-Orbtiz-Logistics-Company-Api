@@ -3,6 +3,7 @@ const { sendSMS } = require('../services/smsService');
 const Receipt = require('../models/Receipt');
 const generateReceiptPDF = require('../utils/generateReceiptPDF');
 const waybillGenerator = require('../utils/waybillGenerator');
+const Customer = require('../models/Customer');
 
 // CREATE new shipment
 exports.createShipment = async (req, res, next) => {
@@ -21,12 +22,20 @@ exports.createShipment = async (req, res, next) => {
     } = req.body;
 
     try {
+
+        const senderInfo = await Customer.findById(sender);
+        console.log(senderInfo);
+        if (!sender) {
+            return res.status(404).json({ message: 'Sender not found' });
+        }
+
         // Generate waybill number
         const waybillNumber = await waybillGenerator(originState, destinationState);
 
         // Create new shipment
         const newShipment = new Shipment({
-            sender,
+            senderName: senderInfo.name,
+            senderPhoneNumber: senderInfo.phoneNumber, 
             receiverName,
             receiverAddress,
             receiverPhone,
@@ -46,28 +55,35 @@ exports.createShipment = async (req, res, next) => {
         // Generate receipt PDF
         const pdfBytes = await generateReceiptPDF(savedShipment, amountPaid, paymentMethod);
 
+        // Convert Uint8Array to Buffer
+        const pdfBuffer = Buffer.from(pdfBytes);
+
         // Create new receipt
         const newReceipt = new Receipt({
-            shipment: savedShipment._id,
-            sender: sender._id,
-            receiverName,
-            amountPaid,
-            paymentMethod,
-            pdf: { data: pdfBytes, contentType: 'application/pdf' }
+            pdf: {
+                data: pdfBuffer,
+                contentType: 'application/pdf'
+            },
+            senderName: savedShipment.senderName, 
+            paymentMethod 
         });
 
         const savedReceipt = await newReceipt.save();
 
-        // Send SMS notification
-        const message = `Hello ${sender.name}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
-        await sendSMS(sender.phoneNumber, message);
+        // Send SMS with sender's name
+        const message = `Hello ${savedReceipt.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
+        await sendSMS(savedReceipt.senderPhoneNumber, message);
 
+        // Respond with shipment and receipt
         res.status(201).json({ shipment: savedShipment, receipt: savedReceipt });
     } catch (error) {
         console.error('Error creating shipment:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+
+
 
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
