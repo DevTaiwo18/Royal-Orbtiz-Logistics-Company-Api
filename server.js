@@ -28,7 +28,7 @@ db.once('open', () => {
 app.use('/auth', authRoutes);
 app.use('/customers', customerRoutes);
 app.use('/shipments', shipmentRoutes);
-app.use('/receipt', receiptRoutes);
+app.use('/receipts', receiptRoutes);
 
 app.use(errorHandler);
 

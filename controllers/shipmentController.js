@@ -65,7 +65,8 @@ exports.createShipment = async (req, res, next) => {
                 contentType: 'application/pdf'
             },
             senderName: savedShipment.senderName, 
-            paymentMethod 
+            paymentMethod,
+            waybillNumber
         });
 
         const savedReceipt = await newReceipt.save();
