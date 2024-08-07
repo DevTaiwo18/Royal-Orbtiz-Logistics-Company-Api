@@ -22,10 +22,9 @@ exports.createShipment = async (req, res, next) => {
     } = req.body;
 
     try {
-
+        // Fetch sender information
         const senderInfo = await Customer.findById(sender);
-        console.log(senderInfo);
-        if (!sender) {
+        if (!senderInfo) {
             return res.status(404).json({ message: 'Sender not found' });
         }
 
@@ -35,7 +34,7 @@ exports.createShipment = async (req, res, next) => {
         // Create new shipment
         const newShipment = new Shipment({
             senderName: senderInfo.name,
-            senderPhoneNumber: senderInfo.phoneNumber, 
+            senderPhoneNumber: senderInfo.phoneNumber,
             receiverName,
             receiverAddress,
             receiverPhone,
@@ -45,7 +44,7 @@ exports.createShipment = async (req, res, next) => {
             destinationState,
             waybillNumber,
             status: 'Pending',
-            price,
+            totalPrice: price, // Changed from price to totalPrice
             paymentMethod,
             amountPaid
         });
@@ -54,8 +53,6 @@ exports.createShipment = async (req, res, next) => {
 
         // Generate receipt PDF
         const pdfBytes = await generateReceiptPDF(savedShipment, amountPaid, paymentMethod);
-
-        // Convert Uint8Array to Buffer
         const pdfBuffer = Buffer.from(pdfBytes);
 
         // Create new receipt
@@ -64,16 +61,16 @@ exports.createShipment = async (req, res, next) => {
                 data: pdfBuffer,
                 contentType: 'application/pdf'
             },
-            senderName: savedShipment.senderName, 
+            senderName: savedShipment.senderName,
             paymentMethod,
             waybillNumber
         });
 
         const savedReceipt = await newReceipt.save();
 
-        // Send SMS with sender's name
-        const message = `Hello ${savedReceipt.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
-        await sendSMS(savedReceipt.senderPhoneNumber, message);
+        // Send SMS notification
+        const message = `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
+        await sendSMS(savedShipment.senderPhoneNumber, message);
 
         // Respond with shipment and receipt
         res.status(201).json({ shipment: savedShipment, receipt: savedReceipt });
@@ -83,15 +80,18 @@ exports.createShipment = async (req, res, next) => {
     }
 };
 
-
-
-
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
     const shipmentId = req.params.id;
     const { status } = req.body;
 
     try {
+        // Validate status
+        if (!['Pending', 'In Transit', 'Delivered'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        // Update shipment status
         const updatedShipment = await Shipment.findByIdAndUpdate(
             shipmentId,
             { status },
@@ -99,20 +99,20 @@ exports.updateShipment = async (req, res) => {
         );
 
         if (!updatedShipment) {
-            return res.status(404).json({ message: 'Shipment not found' });
+            return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
 
-        // Send SMS notification for shipment status update
+        // Send SMS notification for status update
+        let message;
         if (status === 'In Transit') {
-            const message = `Hello ${updatedShipment.sender.name}, your shipment with waybill ${updatedShipment.waybillNumber} is now in transit. Thank you for choosing Royal Orbitz Logistics.`;
-            await sendSMS(updatedShipment.sender.phoneNumber, message);
+            message = `Hello ${updatedShipment.senderName}, your shipment with waybill ${updatedShipment.waybillNumber} is now in transit. Thank you for choosing Royal Orbitz Logistics.`;
         } else if (status === 'Delivered') {
-            const senderMessage = `Hello ${updatedShipment.sender.name}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
-            await sendSMS(updatedShipment.sender.phoneNumber, senderMessage);
-
-            const receiverMessage = `Hello ${updatedShipment.receiverName}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
-            await sendSMS(updatedShipment.receiverPhone, receiverMessage);
+            message = `Hello ${updatedShipment.senderName}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
+            await sendSMS(updatedShipment.receiverPhone, message); // Notify receiver
         }
+
+        // Notify sender
+        await sendSMS(updatedShipment.senderPhoneNumber, message);
 
         res.status(200).json(updatedShipment);
     } catch (error) {
@@ -124,7 +124,7 @@ exports.updateShipment = async (req, res) => {
 // GET all shipments
 exports.getAllShipments = async (req, res) => {
     try {
-        const shipments = await Shipment.find();
+        const shipments = await Shipment.find().sort({ createdAt: -1 }); // Sort by creation date
         res.status(200).json(shipments);
     } catch (error) {
         console.error('Error fetching shipments:', error);
@@ -139,7 +139,7 @@ exports.getShipmentById = async (req, res) => {
     try {
         const shipment = await Shipment.findById(shipmentId);
         if (!shipment) {
-            return res.status(404).json({ message: 'Shipment not found' });
+            return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
         res.status(200).json(shipment);
     } catch (error) {
@@ -155,7 +155,7 @@ exports.deleteShipment = async (req, res) => {
     try {
         const deletedShipment = await Shipment.findByIdAndDelete(shipmentId);
         if (!deletedShipment) {
-            return res.status(404).json({ message: 'Shipment not found' });
+            return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
         res.status(200).json({ message: 'Shipment deleted successfully' });
     } catch (error) {

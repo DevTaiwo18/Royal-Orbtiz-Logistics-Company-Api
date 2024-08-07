@@ -1,4 +1,5 @@
 const Customer = require('../models/Customer');
+const { sendSMS } = require('../services/smsService'); 
 
 // GET all customers
 exports.getAllCustomers = async (req, res) => {
@@ -27,7 +28,23 @@ exports.getCustomerById = async (req, res) => {
   }
 };
 
-// CREATE new customer
+// GET customer by phone number
+exports.getCustomerByPhoneNumber = async (req, res) => {
+  const phoneNumber = req.params.phoneNumber;
+
+  try {
+    const customer = await Customer.findOne({ phoneNumber });
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    res.status(200).json(customer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// CREATE new customer// CREATE new customer
 exports.createCustomer = async (req, res) => {
   const { name, address, phoneNumber } = req.body;
 
@@ -39,12 +56,18 @@ exports.createCustomer = async (req, res) => {
     });
 
     const savedCustomer = await newCustomer.save();
+
+    // Send a welcome SMS to the customer
+    const welcomeMessage = `Hello ${name}, welcome to Royal Courier Logistics! Your account has been successfully created. We are thrilled to have you on board.`;
+    sendSMS(phoneNumber, welcomeMessage);
+
     res.status(201).json(savedCustomer);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // UPDATE customer
 exports.updateCustomer = async (req, res) => {

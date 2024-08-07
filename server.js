@@ -7,6 +7,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const shipmentRoutes = require('./routes/shipmentRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const errorHandler = require('./utils/errorHandler');
+const priceRoutes = require('./routes/priceRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,7 @@ db.once('open', () => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/prices', priceRoutes);
 app.use('/customers', customerRoutes);
 app.use('/shipments', shipmentRoutes);
 app.use('/receipts', receiptRoutes);

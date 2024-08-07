@@ -1,19 +1,25 @@
-const { initClient } = require('messagebird');
-const messagebird = initClient(process.env.MESSAGEBIRD_API_KEY);
+const axios = require('axios');
 
-exports.sendSMS = (to, body) => {
-    const params = {
-        originator: process.env.MESSAGEBIRD_PHONE_NUMBER,
-        recipients: [to],
-        body: body,
-    };
+exports.sendSMS = async (to, body) => {
+    try {
+        const response = await axios.post(
+            'https://www.bulksmsnigeria.com/api/v2/sms',
+            {
+                from: process.env.SENDER_ID, 
+                to: to, 
+                body: body,
+                api_token: process.env.BULK_SMS_API_TOKEN 
+            },
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
 
-    messagebird.messages.create(params, (err, response) => {
-        if (err) {
-            console.error('Error sending SMS:', err);
-            return; 
-        } else {
-            console.log('SMS sent:', response.id);
-        }
-    });
+        console.log('SMS sent:', response.data);
+    } catch (error) {
+        console.error('Error sending SMS:', error.response ? error.response.data : error.message);
+    }
 };
