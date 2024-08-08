@@ -31,7 +31,7 @@ const deliveryScopeChargeSchema = new Schema({
 const categorySchema = new Schema({
     name: {
         type: String,
-        enum: ['Document', 'Parcel', 'Cargo'], // Static categories
+        enum: ['Document', 'Parcel', 'Cargo'],
         required: true
     },
     basePrice: { type: Number, required: true, min: 0 }, // Initial base price for the category
