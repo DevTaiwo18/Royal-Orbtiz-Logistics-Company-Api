@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const fontkit = require('fontkit');
 
-const companyName = 'Royal Orbitz Logistics';
-const companySignatureImagePath = path.join(__dirname, '../assets/companysignature.png');
+const companyName = 'Royal Courier Logistics'; // Updated company name
+const companySignatureText = 'ROYAL-C-L'; // Updated signature text
 
 async function generateReceiptPDF(shipment, amountPaid, paymentMethod) {
     console.log(shipment);
@@ -100,22 +100,26 @@ async function generateReceiptPDF(shipment, amountPaid, paymentMethod) {
             color: rgb(0, 0, 0),
         });
 
-        try {
-            const companySignatureImage = fs.readFileSync(companySignatureImagePath);
-            const imageBytes = await pdfDoc.embedPng(companySignatureImage);
-            const imageDims = imageBytes.scale(0.2);
+        // Draw the company signature text as a mark instead of an image
+        page.drawText(companySignatureText, {
+            x: 50,
+            y: height - 250,
+            font: robotoBold,
+            size: 18,
+            color: rgb(0.5, 0.5, 0.5), // Light gray color for the mark
+            opacity: 0.6, // Semi-transparent
+            rotate: degrees(-10),
+        });
 
-            page.drawImage(imageBytes, {
-                x: 50,
-                y: height - 250,
-                width: imageDims.width,
-                height: imageDims.height,
-                opacity: 0.8,
-                rotate: degrees(-15),
-            });
-        } catch (imageError) {
-            console.error('Error reading company signature image:', imageError);
-        }
+        // Optionally draw a mark or shape
+        page.drawEllipse({
+            x: 50,
+            y: height - 250,
+            width: 100,
+            height: 20,
+            borderColor: rgb(0.5, 0.5, 0.5),
+            borderWidth: 1,
+        });
 
         const pdfBytes = await pdfDoc.save();
         return pdfBytes; // Return the Buffer

@@ -6,35 +6,16 @@ const waybillGenerator = require('../utils/waybillGenerator');
 const Customer = require('../models/Customer');
 
 // CREATE new shipment
+// CREATE new shipment
 exports.createShipment = async (req, res, next) => {
-    const {
-        sender,
-        receiverName,
-        receiverAddress,
-        receiverPhone,
-        description,
-        deliveryType,
-        originState,
-        destinationState,
-        price,
-        paymentMethod,
-        amountPaid
-    } = req.body;
-
     try {
-        // Fetch sender information
-        const senderInfo = await Customer.findById(sender);
-        if (!senderInfo) {
-            return res.status(404).json({ message: 'Sender not found' });
-        }
+        const { senderName, senderPhoneNumber, receiverName, receiverAddress, receiverPhone, description, deliveryType, originState, destinationState, name, totalPrice, paymentMethod, amountPaid } = req.body;
 
-        // Generate waybill number
         const waybillNumber = await waybillGenerator(originState, destinationState);
 
-        // Create new shipment
         const newShipment = new Shipment({
-            senderName: senderInfo.name,
-            senderPhoneNumber: senderInfo.phoneNumber,
+            senderName,
+            senderPhoneNumber,
             receiverName,
             receiverAddress,
             receiverPhone,
@@ -42,20 +23,19 @@ exports.createShipment = async (req, res, next) => {
             deliveryType,
             originState,
             destinationState,
+            name,
             waybillNumber,
             status: 'Pending',
-            totalPrice: price, // Changed from price to totalPrice
+            totalPrice, // Ensure totalPrice is correctly used
             paymentMethod,
             amountPaid
         });
 
         const savedShipment = await newShipment.save();
 
-        // Generate receipt PDF
         const pdfBytes = await generateReceiptPDF(savedShipment, amountPaid, paymentMethod);
         const pdfBuffer = Buffer.from(pdfBytes);
 
-        // Create new receipt
         const newReceipt = new Receipt({
             pdf: {
                 data: pdfBuffer,
@@ -68,17 +48,18 @@ exports.createShipment = async (req, res, next) => {
 
         const savedReceipt = await newReceipt.save();
 
-        // Send SMS notification
         const message = `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
         await sendSMS(savedShipment.senderPhoneNumber, message);
 
-        // Respond with shipment and receipt
         res.status(201).json({ shipment: savedShipment, receipt: savedReceipt });
     } catch (error) {
         console.error('Error creating shipment:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+
+
 
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
@@ -87,7 +68,7 @@ exports.updateShipment = async (req, res) => {
 
     try {
         // Validate status
-        if (!['Pending', 'In Transit', 'Delivered'].includes(status)) {
+        if (!['Pending', 'In Transit', 'Delivered', 'Canceled'].includes(status)) {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
@@ -102,17 +83,23 @@ exports.updateShipment = async (req, res) => {
             return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
 
-        // Send SMS notification for status update
-        let message;
+        // Prepare SMS messages
+        let senderMessage, receiverMessage;
+
         if (status === 'In Transit') {
-            message = `Hello ${updatedShipment.senderName}, your shipment with waybill ${updatedShipment.waybillNumber} is now in transit. Thank you for choosing Royal Orbitz Logistics.`;
+            senderMessage = `Hello ${updatedShipment.senderName}, your shipment with waybill number ${updatedShipment.waybillNumber} is now in transit to ${updatedShipment.receiverName}. Thank you for choosing Royal Orbitz Logistics.`;
+            receiverMessage = `Hello ${updatedShipment.receiverName}, the shipment from ${updatedShipment.senderName} with waybill number ${updatedShipment.waybillNumber} is now in transit. Thank you for choosing Royal Orbitz Logistics.`;
         } else if (status === 'Delivered') {
-            message = `Hello ${updatedShipment.senderName}, your shipment with waybill ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
-            await sendSMS(updatedShipment.receiverPhone, message); // Notify receiver
+            senderMessage = `Hello ${updatedShipment.senderName}, your shipment with waybill number ${updatedShipment.waybillNumber} has been delivered to ${updatedShipment.receiverName}. Thank you for choosing Royal Orbitz Logistics.`;
+            receiverMessage = `Hello ${updatedShipment.receiverName}, the shipment from ${updatedShipment.senderName} with waybill number ${updatedShipment.waybillNumber} has been delivered. Thank you for choosing Royal Orbitz Logistics.`;
+        } else if (status === 'Canceled') {
+            senderMessage = `Hello ${updatedShipment.senderName}, your shipment with waybill number ${updatedShipment.waybillNumber} has been canceled. We apologize for the inconvenience.`;
+            receiverMessage = `Hello ${updatedShipment.receiverName}, the shipment from ${updatedShipment.senderName} with waybill number ${updatedShipment.waybillNumber} has been canceled. We apologize for the inconvenience.`;
         }
 
-        // Notify sender
-        await sendSMS(updatedShipment.senderPhoneNumber, message);
+        // Send SMS notifications
+        await sendSMS(updatedShipment.senderPhoneNumber, senderMessage);
+        await sendSMS(updatedShipment.receiverPhoneNumber, receiverMessage);
 
         res.status(200).json(updatedShipment);
     } catch (error) {

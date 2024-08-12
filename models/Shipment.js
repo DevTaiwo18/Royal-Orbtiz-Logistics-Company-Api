@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const Schema = mongoose.Schema;
 
 // Define the Shipment schema
 const ShipmentSchema = new Schema({
@@ -19,7 +19,7 @@ const ShipmentSchema = new Schema({
     waybillNumber: { type: String, required: true, unique: true }, // Unique waybill number
     status: {
         type: String,
-        enum: ['Pending', 'In Transit', 'Delivered'],
+        enum: ['Pending', 'In Transit', 'Delivered', 'Canceled'],
         default: 'Pending'
     }, // Current status of the shipment
     totalPrice: { type: Number, required: true }, // Total price for the shipment
@@ -29,9 +29,16 @@ const ShipmentSchema = new Schema({
         required: true
     }, // Method of payment
     amountPaid: { type: Number, required: true }, // Amount paid for the shipment
+    documentId: { type: String, unique: true }, // Unique identifier for related documents
+    name: {
+        type: String,
+        enum: ['Document', 'Parcel', 'Cargo'], // Match enums with category types in Price
+        required: true
+    }, // Type of the shipment (document, parcel, or cargo)
     createdAt: { type: Date, default: Date.now } // Date of creation
 });
 
+// Create the Shipment model based on the schema
 const Shipment = mongoose.model('Shipment', ShipmentSchema);
 
 module.exports = Shipment;

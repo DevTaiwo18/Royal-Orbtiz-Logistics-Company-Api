@@ -1,5 +1,5 @@
 const Customer = require('../models/Customer');
-const { sendSMS } = require('../services/smsService'); 
+const { sendSMS } = require('../services/smsService');
 
 // GET all customers
 exports.getAllCustomers = async (req, res) => {
@@ -30,29 +30,36 @@ exports.getCustomerById = async (req, res) => {
 
 // GET customer by phone number
 exports.getCustomerByPhoneNumber = async (req, res) => {
-  const phoneNumber = req.params.phoneNumber;
+  // Extract and clean phone number from request parameters
+  let phoneNumber = req.params.phoneNumber.trim();
 
   try {
+    // Find the customer with the exact phone number match
     const customer = await Customer.findOne({ phoneNumber });
+
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
+
     res.status(200).json(customer);
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching customer:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 
 // CREATE new customer// CREATE new customer
 exports.createCustomer = async (req, res) => {
   const { name, address, phoneNumber } = req.body;
 
   try {
+    // Ensure phoneNumber is treated as a string
     const newCustomer = new Customer({
       name,
       address,
-      phoneNumber
+      phoneNumber: phoneNumber.trim() // Ensure no extra spaces
     });
 
     const savedCustomer = await newCustomer.save();
@@ -69,6 +76,7 @@ exports.createCustomer = async (req, res) => {
 };
 
 
+
 // UPDATE customer
 exports.updateCustomer = async (req, res) => {
   const customerId = req.params.id;
@@ -77,7 +85,7 @@ exports.updateCustomer = async (req, res) => {
   try {
     const updatedCustomer = await Customer.findByIdAndUpdate(
       customerId,
-      { name, address, phoneNumber },
+      { name, address, phoneNumber: phoneNumber.trim() }, // Ensure no extra spaces
       { new: true }
     );
 
@@ -91,6 +99,7 @@ exports.updateCustomer = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // DELETE customer
 exports.deleteCustomer = async (req, res) => {

@@ -4,18 +4,20 @@ async function waybillGenerator(originState, destinationState) {
     const shipmentType = originState === destinationState ? 'WS' : 'IS';
 
     const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const dateString = today.toISOString().slice(0, 10).replace(/-/g, ''); // Format: YYYYMMDD
 
     const countToday = await Shipment.countDocuments({
-        createdAt: { $gte: startOfToday, $lt: endOfToday }
+        createdAt: {
+            $gte: new Date(today.setHours(0, 0, 0, 0)),
+            $lt: new Date(today.setHours(23, 59, 59, 999))
+        }
     });
 
     const sequentialNumber = countToday + 1;
 
     const formattedSequentialNumber = sequentialNumber.toString().padStart(4, '0');
 
-    const waybillNumber = `${shipmentType}-${originState.substring(0, 3).toUpperCase()}-${formattedSequentialNumber}-${destinationState.substring(0, 3).toUpperCase()}`;
+    const waybillNumber = `${shipmentType}-${originState.substring(0, 3).toUpperCase()}-${dateString}-${formattedSequentialNumber}-${destinationState.substring(0, 3).toUpperCase()}`;
 
     return waybillNumber;
 }

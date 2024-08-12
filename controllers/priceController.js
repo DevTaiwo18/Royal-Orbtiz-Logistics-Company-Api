@@ -63,14 +63,21 @@ exports.deletePrice = async (req, res) => {
 
 // Calculate price based on shipment details
 exports.calculatePrice = async (req, res) => {
+  console.log('calculatePrice request received:', req.body);
+
   const {
-    deliveryType, originState, destinationState, weight, categoryName, insurance
+    deliveryType, originState, destinationState, weight, name, insurance
   } = req.body;
 
+  // Validate inputs
+  if (!deliveryType || !originState || !destinationState || !weight || !name) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
   try {
-    // Find the price entry based on deliveryType, originState, and destinationState
+    // Find the price entry based on name
     const priceEntry = await Price.findOne({
-      'categories.name': categoryName
+      'categories.name': name
     });
 
     if (!priceEntry) {
@@ -78,7 +85,7 @@ exports.calculatePrice = async (req, res) => {
     }
 
     // Find the category within the priceEntry
-    const category = priceEntry.categories.find(cat => cat.name === categoryName);
+    const category = priceEntry.categories.find(cat => cat.name === name);
     if (!category) {
       return res.status(404).json({ message: 'Category not found' });
     }
@@ -103,8 +110,11 @@ exports.calculatePrice = async (req, res) => {
     const insuranceCharge = insurance ? category.insuranceCharge : 0;
     const totalPrice = basePrice + weightChargeAmount + insuranceCharge + deliveryChargeAmount + deliveryScopeChargeAmount;
 
+    console.log('Calculated totalPrice:', totalPrice);
     res.status(200).json({ totalPrice });
   } catch (error) {
+    console.error('Price calculation failed:', error);
     res.status(500).json({ message: 'Price calculation failed', error: error.message });
   }
 };
+
