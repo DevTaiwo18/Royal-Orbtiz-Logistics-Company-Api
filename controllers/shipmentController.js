@@ -1,15 +1,16 @@
 const Shipment = require('../models/Shipment');
 const { sendSMS } = require('../services/smsService');
-const Receipt = require('../models/Receipt');
-const generateReceiptPDF = require('../utils/generateReceiptPDF');
 const waybillGenerator = require('../utils/waybillGenerator');
 const Customer = require('../models/Customer');
 
 // CREATE new shipment
-// CREATE new shipment
 exports.createShipment = async (req, res, next) => {
     try {
-        const { senderName, senderPhoneNumber, receiverName, receiverAddress, receiverPhone, description, deliveryType, originState, destinationState, name, totalPrice, paymentMethod, amountPaid } = req.body;
+        const {
+            senderName, senderPhoneNumber, receiverName, receiverAddress,
+            receiverPhone, description, deliveryType, originState,
+            destinationState, name, totalPrice, paymentMethod, amountPaid
+        } = req.body;
 
         const waybillNumber = await waybillGenerator(originState, destinationState);
 
@@ -26,40 +27,24 @@ exports.createShipment = async (req, res, next) => {
             name,
             waybillNumber,
             status: 'Pending',
-            totalPrice, // Ensure totalPrice is correctly used
+            totalPrice,
             paymentMethod,
-            amountPaid
+            amountPaid,
         });
+
+        console.log(newShipment);
 
         const savedShipment = await newShipment.save();
-
-        const pdfBytes = await generateReceiptPDF(savedShipment, amountPaid, paymentMethod);
-        const pdfBuffer = Buffer.from(pdfBytes);
-
-        const newReceipt = new Receipt({
-            pdf: {
-                data: pdfBuffer,
-                contentType: 'application/pdf'
-            },
-            senderName: savedShipment.senderName,
-            paymentMethod,
-            waybillNumber
-        });
-
-        const savedReceipt = await newReceipt.save();
 
         const message = `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
         await sendSMS(savedShipment.senderPhoneNumber, message);
 
-        res.status(201).json({ shipment: savedShipment, receipt: savedReceipt });
+        res.status(201).json({ shipment: savedShipment });
     } catch (error) {
         console.error('Error creating shipment:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
-
-
 
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {

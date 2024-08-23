@@ -1,41 +1,42 @@
+const { v4: uuidv4 } = require('uuid');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 // Define the Shipment schema
 const ShipmentSchema = new Schema({
-    senderName: { type: String, required: true }, // Name of the sender
-    senderPhoneNumber: { type: String, required: true }, // Sender's phone number
-    receiverName: { type: String, required: true }, // Name of the receiver
-    receiverAddress: { type: String, required: true }, // Address of the receiver
-    receiverPhone: { type: String, required: true }, // Receiver's phone number
-    description: { type: String, required: true }, // Description of the shipment
+    senderName: { type: String, required: true },
+    senderPhoneNumber: { type: String, required: true },
+    receiverName: { type: String, required: true },
+    receiverAddress: { type: String, required: true },
+    receiverPhone: { type: String, required: true },
+    description: { type: String, required: true },
     deliveryType: {
         type: String,
-        enum: ['hubToHub', 'officeToHub'], // Match enums with delivery types in Price
+        enum: ['hubToHub', 'officeToHub'],
         required: true
-    }, // Type of delivery
-    originState: { type: String, required: true }, // Origin state
-    destinationState: { type: String, required: true }, // Destination state
-    waybillNumber: { type: String, required: true, unique: true }, // Unique waybill number
+    },
+    originState: { type: String, required: true },
+    destinationState: { type: String, required: true },
+    waybillNumber: { type: String, required: true, unique: true },
     status: {
         type: String,
         enum: ['Pending', 'In Transit', 'Delivered', 'Canceled'],
         default: 'Pending'
-    }, // Current status of the shipment
-    totalPrice: { type: Number, required: true }, // Total price for the shipment
+    },
+    totalPrice: { type: Number, required: true },
     paymentMethod: {
         type: String,
-        enum: ['cash', 'transfer'], // Match enums with payment methods in Price
+        enum: ['cash', 'transfer'],
         required: true
-    }, // Method of payment
-    amountPaid: { type: Number, required: true }, // Amount paid for the shipment
-    documentId: { type: String, unique: true }, // Unique identifier for related documents
+    },
+    amountPaid: { type: Number, required: true },
     name: {
         type: String,
-        enum: ['Document', 'Parcel', 'Cargo'], // Match enums with category types in Price
+        enum: ['Document', 'Parcel', 'Cargo'],
         required: true
-    }, // Type of the shipment (document, parcel, or cargo)
-    createdAt: { type: Date, default: Date.now } // Date of creation
+    },
+    documentId: { type: String, unique: true, default: uuidv4 }, // Adding documentId field
+    createdAt: { type: Date, default: Date.now }
 });
 
 // Create the Shipment model based on the schema

@@ -33,9 +33,13 @@ exports.getCustomerByPhoneNumber = async (req, res) => {
   // Extract and clean phone number from request parameters
   let phoneNumber = req.params.phoneNumber.trim();
 
+  console.log(phoneNumber);
+  
+
   try {
-    // Find the customer with the exact phone number match
     const customer = await Customer.findOne({ phoneNumber });
+    console.log(customer);
+    
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });

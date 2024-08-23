@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const receiptSchema = new mongoose.Schema({
-    pdf: {
-        data: Buffer,
-        contentType: String
+    pdfUrl: {
+        type: String,
+        required: true
     },
     senderName: {
         type: String,
