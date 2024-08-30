@@ -8,11 +8,11 @@ exports.createShipment = async (req, res, next) => {
     try {
         const {
             senderName, senderPhoneNumber, receiverName, receiverAddress,
-            receiverPhone, description, deliveryType, originState,
-            destinationState, name, totalPrice, paymentMethod, amountPaid
+            receiverPhone, description, deliveryType, originState,   
+            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName
         } = req.body;
 
-        const waybillNumber = await waybillGenerator(originState, destinationState);
+        const waybillNumber = await waybillGenerator(originState, destinationState, BranchName);
 
         const newShipment = new Shipment({
             senderName,
@@ -21,6 +21,7 @@ exports.createShipment = async (req, res, next) => {
             receiverAddress,
             receiverPhone,
             description,
+            BranchName,
             deliveryType,
             originState,
             destinationState,

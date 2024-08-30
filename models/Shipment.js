@@ -18,6 +18,7 @@ const ShipmentSchema = new Schema({
     originState: { type: String, required: true },
     destinationState: { type: String, required: true },
     waybillNumber: { type: String, required: true, unique: true },
+    BranchName: { type: String, required: true, unique: true },
     status: {
         type: String,
         enum: ['Pending', 'In Transit', 'Delivered', 'Canceled'],
@@ -30,11 +31,7 @@ const ShipmentSchema = new Schema({
         required: true
     },
     amountPaid: { type: Number, required: true },
-    name: {
-        type: String,
-        enum: ['Document', 'Parcel', 'Cargo'],
-        required: true
-    },
+    name: { type: String, required: true }, // Changed to String type for manual entry
     documentId: { type: String, unique: true, default: uuidv4 }, // Adding documentId field
     createdAt: { type: Date, default: Date.now }
 });

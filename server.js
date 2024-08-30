@@ -8,6 +8,7 @@ const shipmentRoutes = require('./routes/shipmentRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const errorHandler = require('./utils/errorHandler');
 const priceRoutes = require('./routes/priceRoutes');
+const branchRoutes = require('./routes/branchRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ app.use('/prices', priceRoutes);
 app.use('/customers', customerRoutes);
 app.use('/shipments', shipmentRoutes);
 app.use('/receipts', receiptRoutes);
+app.use('/branch', branchRoutes);
 
 app.use(errorHandler);
 

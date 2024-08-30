@@ -7,33 +7,21 @@ const weightChargeSchema = new Schema({
     charge: { type: Number, required: true }  // Cost for this weight range
 }, { _id: false });
 
-// Define the schema for delivery charges with enum
+// Define the schema for delivery charges without enum
 const deliveryChargeSchema = new Schema({
-    type: {
-        type: String,
-        enum: ['hubToHub', 'officeToHub'], // Static delivery types
-        required: true
-    },
+    type: { type: String, required: true }, // Manual entry for delivery types
     charge: { type: Number, required: true } // Cost for this delivery type
 }, { _id: false });
 
-// Define the schema for delivery scope charges with enum
+// Define the schema for delivery scope charges without enum
 const deliveryScopeChargeSchema = new Schema({
-    scope: {
-        type: String,
-        enum: ['withinState', 'interstate'], // Static delivery scopes
-        required: true
-    },
+    scope: { type: String, required: true }, // Manual entry for delivery scopes
     charge: { type: Number, required: true } // Cost for this delivery scope
 }, { _id: false });
 
-// Define the schema for price categories with enum
+// Define the schema for price categories without enum
 const categorySchema = new Schema({
-    name: {
-        type: String,
-        enum: ['Document', 'Parcel', 'Cargo'],
-        required: true
-    },
+    name: { type: String, required: true }, // Manual entry for category names
     basePrice: { type: Number, required: true, min: 0 }, // Initial base price for the category
     weightCharges: [weightChargeSchema], // Array of weight charge ranges
     insuranceCharge: { type: Number, default: 0 }, // Additional insurance charge for this category
