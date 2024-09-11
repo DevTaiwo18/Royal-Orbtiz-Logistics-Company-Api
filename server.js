@@ -10,6 +10,7 @@ const errorHandler = require('./utils/errorHandler');
 const priceRoutes = require('./routes/priceRoutes');
 const payrollRoutes = require('./routes/payrollRoutes');
 const branchRoutes = require('./routes/branchRoutes');
+const riderRoutes = require('./routes/riderRoutes'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use('/shipments', shipmentRoutes);
 app.use('/receipts', receiptRoutes);
 app.use('/branch', branchRoutes);
 app.use('/payroll', payrollRoutes);
+app.use('/riders', riderRoutes);
 
 app.use(errorHandler);
 
