@@ -1,24 +1,24 @@
 const Payroll = require('../models/Payroll');
+const generateEmployeeId = require('../utils/generateEmployeeId');
 
 // CREATE new payroll entry
 exports.createPayroll = async (req, res) => {
     try {
-        const {
-            employeeId, employeeName, branch, payPeriod, paymentDate,
-            basicSalary, overtimePay, bonuses, taxDeductions, otherDeductions
-        } = req.body;
+        const { employeeName, employeeRole, branch, payPeriod, basicSalary, overtimePay, bonuses, taxDeductions, otherDeductions } = req.body;
 
-        // Calculate gross pay, total deductions, and net pay
         const grossPay = basicSalary + (overtimePay || 0) + (bonuses || 0);
         const totalDeductions = (taxDeductions || 0) + (otherDeductions || 0);
         const netPay = grossPay - totalDeductions;
 
+        // Generate unique employeeId
+        const employeeId = await generateEmployeeId(employeeRole);
+
+        // Create new payroll with custom employeeId
         const newPayroll = new Payroll({
-            employeeId,
             employeeName,
+            employeeRole, // Add role field
             branch,
             payPeriod,
-            paymentDate,
             basicSalary,
             overtimePay,
             bonuses,
@@ -27,7 +27,7 @@ exports.createPayroll = async (req, res) => {
             grossPay,
             totalDeductions,
             netPay,
-            status: 'Pending' // Default status
+            employeeId // Add the generated employeeId
         });
 
         const savedPayroll = await newPayroll.save();
@@ -65,40 +65,45 @@ exports.getPayrollById = async (req, res) => {
     }
 };
 
-// UPDATE payroll entry
+// UPDATE payroll entry// UPDATE payroll entry
 exports.updatePayroll = async (req, res) => {
     const payrollId = req.params.id;
-    const { basicSalary, overtimePay, bonuses, taxDeductions, otherDeductions, status } = req.body;
+    const { employeeName, employeeRole, branch, payPeriod, basicSalary, overtimePay, bonuses, taxDeductions, otherDeductions, status } = req.body;
 
     try {
-        // Update payroll fields
-        const updateFields = {};
-        if (basicSalary !== undefined) updateFields.basicSalary = basicSalary;
-        if (overtimePay !== undefined) updateFields.overtimePay = overtimePay;
-        if (bonuses !== undefined) updateFields.bonuses = bonuses;
-        if (taxDeductions !== undefined) updateFields.taxDeductions = taxDeductions;
-        if (otherDeductions !== undefined) updateFields.otherDeductions = otherDeductions;
-        if (status) updateFields.status = status;
-
-        // Recalculate gross pay, total deductions, and net pay if necessary fields are updated
-        if (basicSalary || overtimePay || bonuses || taxDeductions || otherDeductions) {
-            const payroll = await Payroll.findById(payrollId);
-            if (!payroll) {
-                return res.status(404).json({ message: `Payroll with ID ${payrollId} not found` });
-            }
-            updateFields.grossPay = (basicSalary || payroll.basicSalary) + (overtimePay || payroll.overtimePay) + (bonuses || payroll.bonuses);
-            updateFields.totalDeductions = (taxDeductions || payroll.taxDeductions) + (otherDeductions || payroll.otherDeductions);
-            updateFields.netPay = updateFields.grossPay - updateFields.totalDeductions;
+        // Find the existing payroll to update
+        const payroll = await Payroll.findById(payrollId);
+        if (!payroll) {
+            return res.status(404).json({ message: `Payroll with ID ${payrollId} not found` });
         }
 
-        const updatedPayroll = await Payroll.findByIdAndUpdate(payrollId, updateFields, { new: true });
+        // Update fields if provided
+        if (employeeName !== undefined) payroll.employeeName = employeeName;
+        if (employeeRole !== undefined) payroll.employeeRole = employeeRole;
+        if (branch !== undefined) payroll.branch = branch;
+        if (payPeriod !== undefined) payroll.payPeriod = payPeriod;
+        if (basicSalary !== undefined) payroll.basicSalary = basicSalary;
+        if (overtimePay !== undefined) payroll.overtimePay = overtimePay;
+        if (bonuses !== undefined) payroll.bonuses = bonuses;
+        if (taxDeductions !== undefined) payroll.taxDeductions = taxDeductions;
+        if (otherDeductions !== undefined) payroll.otherDeductions = otherDeductions;
+        if (status !== undefined) payroll.status = status;
 
-        res.status(200).json(updatedPayroll);
+        // Recalculate gross pay, total deductions, and net pay
+        payroll.grossPay = (payroll.basicSalary || 0) + (payroll.overtimePay || 0) + (payroll.bonuses || 0);
+        payroll.totalDeductions = (payroll.taxDeductions || 0) + (payroll.otherDeductions || 0);
+        payroll.netPay = payroll.grossPay - payroll.totalDeductions;
+
+        // Save the updated payroll
+        const updatedPayroll = await payroll.save();
+
+        res.status(200).json({ payroll: updatedPayroll }); // Make sure this matches the expected structure
     } catch (error) {
         console.error('Error updating payroll:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
 
 // DELETE payroll entry
 exports.deletePayroll = async (req, res) => {
