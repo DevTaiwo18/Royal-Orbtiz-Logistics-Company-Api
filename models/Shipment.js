@@ -33,6 +33,7 @@ const ShipmentSchema = new Schema({
     amountPaid: { type: Number, required: true },
     name: { type: String, required: true }, // Changed to String type for manual entry
     documentId: { type: String, unique: true, default: uuidv4 }, // Adding documentId field
+    insurance: { type: Number }, // Optional insurance field
     createdAt: { type: Date, default: Date.now }
 });
 

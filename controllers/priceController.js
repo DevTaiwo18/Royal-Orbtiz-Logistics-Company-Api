@@ -107,8 +107,8 @@ exports.calculatePrice = async (req, res) => {
 
     // Calculate total price
     const basePrice = category.basePrice;
-    const insuranceCharge = insurance ? category.insuranceCharge : 0;
-    const totalPrice = basePrice + weightChargeAmount + insuranceCharge + deliveryChargeAmount + deliveryScopeChargeAmount;
+    const vatCharge  = insurance ? category.vatCharge  : 0;
+    const totalPrice = basePrice + weightChargeAmount + vatCharge  + deliveryChargeAmount + deliveryScopeChargeAmount;
 
     console.log('Calculated totalPrice:', totalPrice);
     res.status(200).json({ totalPrice });

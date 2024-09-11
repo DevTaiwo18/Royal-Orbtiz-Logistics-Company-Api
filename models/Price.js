@@ -24,7 +24,7 @@ const categorySchema = new Schema({
     name: { type: String, required: true }, // Manual entry for category names
     basePrice: { type: Number, required: true, min: 0 }, // Initial base price for the category
     weightCharges: [weightChargeSchema], // Array of weight charge ranges
-    insuranceCharge: { type: Number, default: 0 }, // Additional insurance charge for this category
+    vatCharge : { type: Number, default: 0 }, // Additional insurance charge for this category
     deliveryCharges: [deliveryChargeSchema], // Array of delivery charges
     deliveryScopeCharges: [deliveryScopeChargeSchema] // Array of delivery scope charges
 }, { _id: false });

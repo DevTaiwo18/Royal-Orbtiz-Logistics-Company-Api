@@ -1,17 +1,24 @@
 const Shipment = require('../models/Shipment');
 const { sendSMS } = require('../services/smsService');
 const waybillGenerator = require('../utils/waybillGenerator');
-const Customer = require('../models/Customer');
 
 // CREATE new shipment
-exports.createShipment = async (req, res, next) => {
+exports.createShipment = async (req, res) => {
     try {
         const {
             senderName, senderPhoneNumber, receiverName, receiverAddress,
             receiverPhone, description, deliveryType, originState,   
-            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName
+            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName, insurance // Added insurance field
         } = req.body;
 
+        // Validate required fields
+        if (!senderName || !senderPhoneNumber || !receiverName || !receiverAddress || 
+            !receiverPhone || !description || !deliveryType || !originState || 
+            !destinationState || !name || !totalPrice || !paymentMethod || !amountPaid || !BranchName) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        // Generate a waybill number
         const waybillNumber = await waybillGenerator(originState, destinationState, BranchName);
 
         const newShipment = new Shipment({
@@ -31,14 +38,16 @@ exports.createShipment = async (req, res, next) => {
             totalPrice,
             paymentMethod,
             amountPaid,
+            insurance: insurance || 0 // Set insurance to the provided value or default to 0 if not provided
         });
-
-        console.log(newShipment);
 
         const savedShipment = await newShipment.save();
 
-        const message = `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`;
-        await sendSMS(savedShipment.senderPhoneNumber, message);
+        // Send SMS to the sender
+        await sendSMS(
+            savedShipment.senderPhoneNumber, 
+            `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`
+        );
 
         res.status(201).json({ shipment: savedShipment });
     } catch (error) {
@@ -50,18 +59,24 @@ exports.createShipment = async (req, res, next) => {
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
     const shipmentId = req.params.id;
-    const { status } = req.body;
+    const { status, insurance } = req.body; // Added insurance field
 
     try {
         // Validate status
-        if (!['Pending', 'In Transit', 'Delivered', 'Canceled'].includes(status)) {
+        const validStatuses = ['Pending', 'In Transit', 'Delivered', 'Canceled'];
+        if (status && !validStatuses.includes(status)) {
             return res.status(400).json({ message: 'Invalid status' });
         }
+
+        // Update shipment fields
+        const updateFields = {};
+        if (status) updateFields.status = status;
+        if (insurance !== undefined) updateFields.insurance = insurance; // Update insurance if provided
 
         // Update shipment status
         const updatedShipment = await Shipment.findByIdAndUpdate(
             shipmentId,
-            { status },
+            updateFields,
             { new: true }
         );
 
@@ -69,8 +84,9 @@ exports.updateShipment = async (req, res) => {
             return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
 
-        // Prepare SMS messages
-        let senderMessage, receiverMessage;
+        // Prepare SMS messages based on status
+        let senderMessage = '';
+        let receiverMessage = '';
 
         if (status === 'In Transit') {
             senderMessage = `Hello ${updatedShipment.senderName}, your shipment with waybill number ${updatedShipment.waybillNumber} is now in transit to ${updatedShipment.receiverName}. Thank you for choosing Royal Orbitz Logistics.`;
@@ -83,9 +99,11 @@ exports.updateShipment = async (req, res) => {
             receiverMessage = `Hello ${updatedShipment.receiverName}, the shipment from ${updatedShipment.senderName} with waybill number ${updatedShipment.waybillNumber} has been canceled. We apologize for the inconvenience.`;
         }
 
-        // Send SMS notifications
-        await sendSMS(updatedShipment.senderPhoneNumber, senderMessage);
-        await sendSMS(updatedShipment.receiverPhoneNumber, receiverMessage);
+        // Send SMS notifications if status changed
+        if (senderMessage && receiverMessage) {
+            await sendSMS(updatedShipment.senderPhoneNumber, senderMessage);
+            await sendSMS(updatedShipment.receiverPhone, receiverMessage);
+        }
 
         res.status(200).json(updatedShipment);
     } catch (error) {
