@@ -3,17 +3,11 @@ const Shipment = require('../models/Shipment');
 async function waybillGenerator(originState, destinationState, BranchName) {
     const shipmentType = originState === destinationState ? 'WS' : 'IS';
 
-    // Count the total number of shipments the company has run
-    const totalShipments = await Shipment.countDocuments();
+    // Get current date in YYYYMMDD format for traceability
+    const currentDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-    // Increment the total shipment count to get the next sequential number
-    const sequentialNumber = totalShipments + 1;
-
-    // Format the sequential number to be 4 digits, e.g., 0001
-    const formattedSequentialNumber = sequentialNumber.toString().padStart(4, '0');
-
-    // Generate the waybill number including BranchName
-    const waybillNumber = `${shipmentType}-${originState.substring(0, 3).toUpperCase()}-${formattedSequentialNumber}-${destinationState.substring(0, 3).toUpperCase()}-${BranchName.substring(0, 3).toUpperCase()}`;
+    // Generate the waybill number including BranchName and date, but without sequential number
+    const waybillNumber = `${shipmentType}-${originState.substring(0, 3).toUpperCase()}-${destinationState.substring(0, 3).toUpperCase()}-${BranchName.substring(0, 3).toUpperCase()}-${currentDate}`;
 
     // Return the unique waybill number
     return waybillNumber;

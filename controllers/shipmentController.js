@@ -8,7 +8,7 @@ exports.createShipment = async (req, res) => {
         const {
             senderName, senderPhoneNumber, receiverName, receiverAddress,
             receiverPhone, description, deliveryType, originState,   
-            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName, insurance // Added insurance field
+            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName, insurance, itemCondition // Added insurance and itemCondition fields
         } = req.body;
 
         // Validate required fields
@@ -16,6 +16,12 @@ exports.createShipment = async (req, res) => {
             !receiverPhone || !description || !deliveryType || !originState || 
             !destinationState || !name || !totalPrice || !paymentMethod || !amountPaid || !BranchName) {
             return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        // Validate item condition
+        const validConditions = ['Damaged', 'Partially Damaged', 'Not Damaged or Good'];
+        if (itemCondition && !validConditions.includes(itemCondition)) {
+            return res.status(400).json({ message: 'Invalid item condition' });
         }
 
         // Generate a waybill number
@@ -38,7 +44,8 @@ exports.createShipment = async (req, res) => {
             totalPrice,
             paymentMethod,
             amountPaid,
-            insurance: insurance || 0 // Set insurance to the provided value or default to 0 if not provided
+            insurance: insurance || 0, // Set insurance to the provided value or default to 0 if not provided
+            itemCondition: itemCondition || 'Not Damaged or Good' // Set default item condition
         });
 
         const savedShipment = await newShipment.save();
@@ -59,7 +66,7 @@ exports.createShipment = async (req, res) => {
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
     const shipmentId = req.params.id;
-    const { status, insurance } = req.body; // Added insurance field
+    const { status, insurance, itemCondition } = req.body; // Added insurance and itemCondition fields
 
     try {
         // Validate status
@@ -68,10 +75,17 @@ exports.updateShipment = async (req, res) => {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
+        // Validate item condition
+        const validConditions = ['Damaged', 'Partially Damaged', 'Not Damaged or Good'];
+        if (itemCondition && !validConditions.includes(itemCondition)) {
+            return res.status(400).json({ message: 'Invalid item condition' });
+        }
+
         // Update shipment fields
         const updateFields = {};
         if (status) updateFields.status = status;
         if (insurance !== undefined) updateFields.insurance = insurance; // Update insurance if provided
+        if (itemCondition) updateFields.itemCondition = itemCondition; // Update item condition if provided
 
         // Update shipment status
         const updatedShipment = await Shipment.findByIdAndUpdate(

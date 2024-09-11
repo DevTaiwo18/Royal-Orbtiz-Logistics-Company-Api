@@ -34,6 +34,11 @@ const ShipmentSchema = new Schema({
     name: { type: String, required: true }, // Changed to String type for manual entry
     documentId: { type: String, unique: true, default: uuidv4 }, // Adding documentId field
     insurance: { type: Number }, // Optional insurance field
+    itemCondition: { // New field for item condition
+        type: String,
+        enum: ['Damaged', 'Partially Damaged', 'Not Damaged or Good'],
+        default: 'Not Damaged or Good'
+    },
     createdAt: { type: Date, default: Date.now }
 });
 
