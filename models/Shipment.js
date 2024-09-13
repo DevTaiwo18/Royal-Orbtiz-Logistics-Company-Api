@@ -18,7 +18,7 @@ const ShipmentSchema = new Schema({
     originState: { type: String, required: true },
     destinationState: { type: String, required: true },
     waybillNumber: { type: String, required: true, unique: true },
-    BranchName: { type: String, required: true, unique: true },
+    BranchName: { type: String, required: true },
     status: {
         type: String,
         enum: ['Pending', 'In Transit', 'Delivered', 'Canceled'],
@@ -38,6 +38,16 @@ const ShipmentSchema = new Schema({
         type: String,
         enum: ['Damaged', 'Partially Damaged', 'Not Damaged or Good'],
         default: 'Not Damaged or Good'
+    },
+    rider: { // Reference to the Rider model
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Rider',
+        required: true
+    },
+    createdBy: { // Reference to the Payroll model (staff who created the shipment)
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payroll',
+        required: true
     },
     createdAt: { type: Date, default: Date.now }
 });

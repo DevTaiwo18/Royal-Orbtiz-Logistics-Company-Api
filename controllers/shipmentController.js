@@ -7,25 +7,25 @@ exports.createShipment = async (req, res) => {
     try {
         const {
             senderName, senderPhoneNumber, receiverName, receiverAddress,
-            receiverPhone, description, deliveryType, originState,   
-            destinationState, name, totalPrice, paymentMethod, amountPaid, BranchName, insurance, itemCondition // Added insurance and itemCondition fields
+            receiverPhone, description, deliveryType, originState,
+            destinationState, name, totalPrice, paymentMethod, amountPaid,
+            BranchName, insurance, itemCondition, riderId, staffId
         } = req.body;
 
-        // Validate required fields
-        if (!senderName || !senderPhoneNumber || !receiverName || !receiverAddress || 
-            !receiverPhone || !description || !deliveryType || !originState || 
-            !destinationState || !name || !totalPrice || !paymentMethod || !amountPaid || !BranchName) {
-            return res.status(400).json({ message: 'All fields are required' });
-        }
+        // Log all required fields to debug potential missing fields
+        console.log('Received payload:', req.body);
 
-        // Validate item condition
-        const validConditions = ['Damaged', 'Partially Damaged', 'Not Damaged or Good'];
-        if (itemCondition && !validConditions.includes(itemCondition)) {
-            return res.status(400).json({ message: 'Invalid item condition' });
+        // Validate required fields
+        if (!senderName || !senderPhoneNumber || !receiverName || !receiverAddress ||
+            !receiverPhone || !description || !deliveryType || !originState ||
+            !destinationState || !name || !totalPrice || !paymentMethod || !amountPaid || !BranchName || !riderId || !staffId) {
+            console.error('Validation failed: Missing required fields');
+            return res.status(400).json({ message: 'All fields are required' });
         }
 
         // Generate a waybill number
         const waybillNumber = await waybillGenerator(originState, destinationState, BranchName);
+        console.log('Generated waybill:', waybillNumber);
 
         const newShipment = new Shipment({
             senderName,
@@ -44,15 +44,18 @@ exports.createShipment = async (req, res) => {
             totalPrice,
             paymentMethod,
             amountPaid,
-            insurance: insurance || 0, // Set insurance to the provided value or default to 0 if not provided
-            itemCondition: itemCondition || 'Not Damaged or Good' // Set default item condition
+            insurance: insurance || 0,
+            itemCondition: itemCondition || 'Not Damaged or Good',
+            rider: riderId,
+            createdBy: staffId
         });
 
         const savedShipment = await newShipment.save();
+        console.log('Shipment saved successfully:', savedShipment);
 
         // Send SMS to the sender
         await sendSMS(
-            savedShipment.senderPhoneNumber, 
+            savedShipment.senderPhoneNumber,
             `Hello ${savedShipment.senderName}, your shipment with waybill ${savedShipment.waybillNumber} is pending confirmation of payment via ${paymentMethod}. Amount: ${amountPaid}. Visit royalorbitzlogistics.com for more details.`
         );
 
@@ -63,10 +66,11 @@ exports.createShipment = async (req, res) => {
     }
 };
 
+
 // UPDATE shipment
 exports.updateShipment = async (req, res) => {
     const shipmentId = req.params.id;
-    const { status, insurance, itemCondition } = req.body; // Added insurance and itemCondition fields
+    const { status, insurance, itemCondition, riderId, staffId } = req.body; // Added riderId and staffId fields
 
     try {
         // Validate status
@@ -86,6 +90,8 @@ exports.updateShipment = async (req, res) => {
         if (status) updateFields.status = status;
         if (insurance !== undefined) updateFields.insurance = insurance; // Update insurance if provided
         if (itemCondition) updateFields.itemCondition = itemCondition; // Update item condition if provided
+        if (riderId) updateFields.rider = riderId; // Update rider if provided
+        if (staffId) updateFields.createdBy = staffId; // Update createdBy if provided
 
         // Update shipment status
         const updatedShipment = await Shipment.findByIdAndUpdate(
@@ -129,7 +135,7 @@ exports.updateShipment = async (req, res) => {
 // GET all shipments
 exports.getAllShipments = async (req, res) => {
     try {
-        const shipments = await Shipment.find().sort({ createdAt: -1 }); // Sort by creation date
+        const shipments = await Shipment.find().populate('rider').populate('createdBy').sort({ createdAt: -1 }); // Populate rider and staff details
         res.status(200).json(shipments);
     } catch (error) {
         console.error('Error fetching shipments:', error);
@@ -142,7 +148,7 @@ exports.getShipmentById = async (req, res) => {
     const shipmentId = req.params.id;
 
     try {
-        const shipment = await Shipment.findById(shipmentId);
+        const shipment = await Shipment.findById(shipmentId).populate('rider').populate('createdBy'); // Populate rider and staff details
         if (!shipment) {
             return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
