@@ -1,6 +1,7 @@
 const Shipment = require('../models/Shipment');
 const { sendSMS } = require('../services/smsService');
 const waybillGenerator = require('../utils/waybillGenerator');
+const mongoose = require('mongoose');
 
 // CREATE new shipment
 exports.createShipment = async (req, res) => {
@@ -147,17 +148,28 @@ exports.getAllShipments = async (req, res) => {
 exports.getShipmentById = async (req, res) => {
     const shipmentId = req.params.id;
 
+    // Validate that the ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(shipmentId)) {
+        console.log('Invalid shipment')
+        return res.status(400).json({ message: 'Invalid ID format. Expected a valid ObjectId.' });
+    }
+
     try {
-        const shipment = await Shipment.findById(shipmentId).populate('rider').populate('createdBy'); // Populate rider and staff details
+        const shipment = await Shipment.findById(shipmentId)
+            .populate('rider')
+            .populate('createdBy');
+
         if (!shipment) {
             return res.status(404).json({ message: `Shipment with ID ${shipmentId} not found` });
         }
+
         res.status(200).json(shipment);
     } catch (error) {
         console.error('Error fetching shipment:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
 
 // DELETE shipment
 exports.deleteShipment = async (req, res) => {
@@ -174,3 +186,27 @@ exports.deleteShipment = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+// GET shipment by Waybill Number
+exports.getShipmentByWaybill = async (req, res) => {
+    const { waybillNumber } = req.params;
+    console.log(`Searching for waybill number: ${waybillNumber}`);
+
+    try {
+        const shipment = await Shipment.findOne({ waybillNumber: waybillNumber.trim() }).populate('rider').populate('createdBy');
+        if (!shipment) {
+            console.log(`No shipment found for waybill number: ${waybillNumber}`);
+            return res.status(404).json({ message: `Shipment with Waybill Number ${waybillNumber} not found` });
+        }
+        console.log(`Shipment found:`, shipment);
+        res.status(200).json(shipment);
+    } catch (error) {
+        console.error('Error fetching shipment by waybill number:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+
+
+
+
